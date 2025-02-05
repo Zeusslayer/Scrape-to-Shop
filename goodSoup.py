@@ -11,7 +11,16 @@ response = requests.get(url)
 if response.status_code == 200:
     # Parse the HTML content of the page
     soup = BeautifulSoup(response.content, 'html.parser')
+    # print(soup.prettify())
 
+    # Saving the parsed HTML to a file
+    with open('output.html', 'w', encoding='utf-8') as file:
+        file.write(soup.prettify())
+      
+    with open('links.txt', 'w', encoding='utf-8') as file:  
+        for link in soup.find_all('a'):
+            if link.get('href'):
+                file.write(link.get('href')+"\n")
     # # Extract product name
     # product_name = soup.find('h1', class_='product-title').text.strip()
     # print(f'Product Name: {product_name}')
