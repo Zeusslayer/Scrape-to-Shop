@@ -3,20 +3,14 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import re
 
-# URL of the webpage you want to scrape
-# url = 'https://www.coolblue.be/en/mobile-phones/smartphones/apple-iphone/filter'
-
-# Send a GET request to the URL
-# response = requests.get(url)
-
 # Base URL for pagination
 base_url = "https://www.coolblue.be/en/mobile-phones/smartphones/apple-iphone/filter?page="
 page = 1  # Start from page 1
 all_links = set()  # Use a set to store unique links
 
 while True:
-    if page > 1:  # Stop after 1 iterations. Delete later
-        break
+    # if page > 1:  # Stop after 1 iterations. Delete later
+    #     break
 
     # Construct the URL for the current page (Pagination)
     url = f"{base_url}{page}"
@@ -55,26 +49,27 @@ while True:
 print(f"Total collected links before writing: {len(all_links)}")
 
 # Save unique links to a file. Delete later
-with open('links.txt', 'w', encoding='utf-8') as file:
-    for link in all_links:
-        file.write(link + '\n')
+# with open('links.txt', 'w', encoding='utf-8') as file:
+#     for link in all_links:
+#         file.write(link + '\n')
+
+# List to store all product data
+products_data = []
 
 # Retrieving data from products one by one
 for index, link in enumerate(all_links, start=1):
-    if index > 1:  # Stop after 1 iterations. Delete later
-        break
+    # if index > 3:  # Stop after 1 iterations. Delete later
+    #     break
 
-    # response = requests.get(f"https://www.coolblue.be{link}")
-    response = requests.get(
-        f"https://www.coolblue.be/en/product/952125/apple-iphone-16-pro-max-256gb-white-titanium.html")
+    response = requests.get(f"https://www.coolblue.be{link}")
 
     if response.status_code == 200:
         # Parse the HTML content of the page
         soup = BeautifulSoup(response.content, 'html.parser')
 
         # Saving the parsed HTML to a file. Delete later
-        with open('outputProduct.html', 'w', encoding='utf-8') as file:
-            file.write(soup.prettify())
+        # with open('outputProduct.html', 'w', encoding='utf-8') as file:
+        #     file.write(soup.prettify())
 
         # Find the div with class 'product-page' to get the product name
         product_name = None
@@ -112,7 +107,7 @@ for index, link in enumerate(all_links, start=1):
         # Get second chance price based on the text search
         second_chance_price = None
         second_chance_div = soup.find(
-            'a', string=lambda text: text and "Affordable Second Chance" in text)
+            'a', nd_chance_pricstring=lambda text: text and "Affordable Second Chance" in text)
         if second_chance_div:
             second_chance_price_tag = second_chance_div.find_next('strong')
             if second_chance_price_tag:
@@ -124,6 +119,16 @@ for index, link in enumerate(all_links, start=1):
                 if price_match:
                     # Clean up price (remove any commas and extract the numeric value)
                     second_chance_price = price_match.group(1).replace(',', '')
+        
+        # Store extracted data until here
+        product_info = {
+            "Link": f"https://www.coolblue.be{link}",
+            "Name": product_name,
+            "Price": price,
+            "Score": score,
+            "Reviews": reviews,
+            "Second Chance": second_chance_price
+        }
 
         # Find the div with class 'js-specifications-content'
         specifications_div = soup.find(
@@ -132,34 +137,6 @@ for index, link in enumerate(all_links, start=1):
         if specifications_div:
             # Extract all dl elements inside the div
             dl_elements = specifications_div.find_all('dl')
-
-            # List to store the extracted data
-            data = []
-
-            # Add the product name as the first entry in the data list
-            if product_name:
-                data.append({'Property Name': 'Name',
-                            'Property Value': product_name})
-
-            # Add the score property if available
-            if score:
-                data.append({'Property Name': 'Score',
-                            'Property Value': score})
-
-            # Add the reviews count as "reviews" property if available
-            if reviews:
-                data.append({'Property Name': 'Reviews',
-                            'Property Value': reviews})
-
-            # Add price
-            if price:
-                data.append({'Property Name': 'Price',
-                            'Property Value': price})
-
-            # Add second chance price
-            if second_chance_price:
-                data.append({'Property Name': 'Second Chance',
-                            'Property Value': second_chance_price})
 
             # Loop through all dl elements and extract data
             for dl in dl_elements:
@@ -177,35 +154,17 @@ for index, link in enumerate(all_links, start=1):
 
                 # Only append the data if both name and value exist
                 if name and value:
-                    data.append(
-                        {'Property Name': name, 'Property Value': value})
+                    product_info[name] = value
 
-            # Create a pandas DataFrame
-            df = pd.DataFrame(data)
-            print(df)
+        # Add product data to list
+        products_data.append(product_info)
+        
+        print(f"Stored {index}/{len(all_links)}")
 
-            # Save the DataFrame to an Excel file
-            df.to_excel('product_specifications.xlsx', index=False)
+# Create a pandas DataFrame
+df = pd.DataFrame(products_data)
 
-            print(f"Data saved to product_specifications.xlsx")
+# Save the DataFrame to an Excel file
+df.to_excel('product_specifications.xlsx', index=False)
 
-    else:
-        print("Specifications content not found on the page.")
-
-    # # Extract product name
-    # product_name = soup.find('h1', class_='product-title').text.strip()
-    # print(f'Product Name: {product_name}')
-
-    # # Extract product price
-    # product_price = soup.find('span', class_='sales-price__current').text.strip()
-    # print(f'Product Price: {product_price}')
-
-    # # Extract product attributes
-    # attributes_section = soup.find('section', class_='product-specifications')
-    # attributes = attributes_section.find_all('li')
-
-    # print('Product Attributes:')
-    # for attribute in attributes:
-    #     attribute_name = attribute.find('span', class_='product-specifications__label').text.strip()
-    #     attribute_value = attribute.find('span', class_='product-specifications__value').text.strip()
-    #     print(f'{attribute_name}: {attribute_value}')
+print(f"End of scraping")
