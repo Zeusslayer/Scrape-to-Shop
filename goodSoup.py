@@ -4,16 +4,16 @@ import pandas as pd
 import re
 
 # Base URL for pagination
-base_url = "https://www.coolblue.be/en/mobile-phones/smartphones/apple-iphone/filter?page="
+base_url = "https://www.coolblue.be/en/mobile-phones/smartphones/apple-iphone"
 page = 1  # Start from page 1
 all_links = set()  # Use a set to store unique links
 
 while True:
-    # if page > 1:  # Stop after 1 iterations. Delete later
-    #     break
+    if page > 1:  # Stop after 1 iterations. Delete later
+        break
 
     # Construct the URL for the current page (Pagination)
-    url = f"{base_url}{page}"
+    url = f"{base_url}/filter?page={page}"
     response = requests.get(url)
 
     # Check if the request was successful
@@ -58,10 +58,11 @@ products_data = []
 
 # Retrieving data from products one by one
 for index, link in enumerate(all_links, start=1):
-    # if index > 3:  # Stop after 1 iterations. Delete later
-    #     break
-
-    response = requests.get(f"https://www.coolblue.be{link}")
+    if index > 1:  # Stop after 1 iterations. Delete later
+        break
+    # response = requests.get(f"https://www.coolblue.be{link}")
+    response = requests.get(
+        f"https://www.coolblue.be/en/product/953059/apple-iphone-16-pro-max-1tb-natural-titanium.html")
 
     if response.status_code == 200:
         # Parse the HTML content of the page
@@ -101,13 +102,13 @@ for index, link in enumerate(all_links, start=1):
                 strong_element = sales_price_span.find('strong')
                 if strong_element:
                     price_text = strong_element.get_text(strip=True)
-                    price = price_text.split(',')[0].strip(
-                    ) if ',' in price_text else price_text  # Extract before the comma
+                    price = price_text.split(',')[0].replace(
+                        '.', '').strip() if ',' in price_text else price_text
 
         # Get second chance price based on the text search
         second_chance_price = None
         second_chance_div = soup.find(
-            'a', nd_chance_pricstring=lambda text: text and "Affordable Second Chance" in text)
+            'a', string=lambda text: text and "Affordable Second Chance" in text)
         if second_chance_div:
             second_chance_price_tag = second_chance_div.find_next('strong')
             if second_chance_price_tag:
@@ -118,16 +119,17 @@ for index, link in enumerate(all_links, start=1):
                     r'(\d[\d,.]*)', second_chance_price_text)
                 if price_match:
                     # Clean up price (remove any commas and extract the numeric value)
-                    second_chance_price = price_match.group(1).replace(',', '')
-        
+                    second_chance_price = price_match.group(
+                        1).replace(',', '').replace('.', '')
+
         # Store extracted data until here
         product_info = {
             "Link": f"https://www.coolblue.be{link}",
             "Name": product_name,
             "Price": price,
-            "Score": score,
+            "2nd Hand Price": second_chance_price,
             "Reviews": reviews,
-            "Second Chance": second_chance_price
+            "Score": score
         }
 
         # Find the div with class 'js-specifications-content'
@@ -158,7 +160,7 @@ for index, link in enumerate(all_links, start=1):
 
         # Add product data to list
         products_data.append(product_info)
-        
+
         print(f"Stored {index}/{len(all_links)}")
 
 # Create a pandas DataFrame
