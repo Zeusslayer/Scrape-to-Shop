@@ -9,8 +9,8 @@ page = 1  # Start from page 1
 all_links = set()  # Use a set to store unique links
 
 while True:
-    if page > 1:  # Stop after 1 iterations. Delete later
-        break
+    # if page > 1:  # Stop after 1 iterations. (Testing purposes)
+    #     break
 
     # Construct the URL for the current page (Pagination)
     url = f"{base_url}/filter?page={page}"
@@ -48,7 +48,7 @@ while True:
 
 print(f"Total collected links before writing: {len(all_links)}")
 
-# Save unique links to a file. Delete later
+# Save unique links to a file.
 # with open('links.txt', 'w', encoding='utf-8') as file:
 #     for link in all_links:
 #         file.write(link + '\n')
@@ -58,17 +58,19 @@ products_data = []
 
 # Retrieving data from products one by one
 for index, link in enumerate(all_links, start=1):
-    if index > 1:  # Stop after 1 iterations. Delete later
-        break
-    # response = requests.get(f"https://www.coolblue.be{link}")
-    response = requests.get(
-        f"https://www.coolblue.be/en/product/953059/apple-iphone-16-pro-max-1tb-natural-titanium.html")
+    # if index > 1:  # Stop after 1 iterations. (Testing purposes)
+    #     break
+    
+    response = requests.get(f"https://www.coolblue.be{link}")
+    # Example link
+    # response = requests.get(
+    #     f"https://www.coolblue.be/en/product/953059/apple-iphone-16-pro-max-1tb-natural-titanium.html")
 
     if response.status_code == 200:
         # Parse the HTML content of the page
         soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Saving the parsed HTML to a file. Delete later
+        # Saving the parsed HTML to a file.
         # with open('outputProduct.html', 'w', encoding='utf-8') as file:
         #     file.write(soup.prettify())
 
