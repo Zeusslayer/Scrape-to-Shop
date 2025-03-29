@@ -14,11 +14,12 @@ After opening Codespaces you need to make some installation to be able to run th
 You need to install two extensions.
 
 `python` for running python code.
+
 `excel viewer` for viewing created excel file inside Codespaces. This is optinal. You can also download xlsx file and see it on your local machine.
 
 Run this on the terminal
 ```bash
-pip install openpyxl to terminal
+pip install openpyxl
 ```
 
 Now it is ready to use!
