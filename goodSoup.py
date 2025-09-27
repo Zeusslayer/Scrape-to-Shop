@@ -74,55 +74,58 @@ for index, link in enumerate(all_links, start=1):
         # with open('outputProduct.html', 'w', encoding='utf-8') as file:
         #     file.write(soup.prettify())
 
-        # Find the div with class 'product-page' to get the product name
+        # Find the div with class 'main-information-18077go' to get the product name from h1 element
         product_name = None
-        product_page_div = soup.find('div', class_='product-page')
+        product_page_div = soup.find('div', class_='main-information-18077go')
         if product_page_div:
             h1_element = product_page_div.find('h1')
             if h1_element:
                 product_name = h1_element.get_text(strip=True)
 
-        # Find the div with class 'review-rating' to get score and reviews
+        # Find the div with class 'main-information-4qdsve' to get score and reviews
         score = None
         reviews = None
-        review_rating_div = soup.find('div', class_='review-rating')
+        review_rating_div = soup.find('div', class_='main-information-4qdsve')
         if review_rating_div:
-            span_element = review_rating_div.find('span')
-            if span_element:
-                rating_text = span_element.get_text(strip=True)
-                if '/' in rating_text:
-                    score = rating_text.split('/')[0].strip()
-                if '(' in rating_text and ')' in rating_text:
-                    reviews = rating_text.split('(')[1].split()[0].strip()
+            spans = review_rating_div.find_all('span', class_='main-information-ecoufm')
+            if spans:
+                # First span = score
+                score = spans[0].get_text(strip=True)
 
-        # Extract price from <div class="js-threshold-toggle-sticky-bar">
+                # Last span = reviews (extract number inside parentheses)
+                reviews_text = spans[-1].get_text(strip=True)
+                if '(' in reviews_text:
+                    reviews = reviews_text.split('(')[1].split()[0]
+
+        # Extract price from <div class="main-information-1ug6m03">
         price = None
-        price_div = soup.find('div', class_='js-threshold-toggle-sticky-bar')
+        price_div = soup.find('div', class_='main-information-1ug6m03')
         if price_div:
-            sales_price_span = price_div.find('span', class_='sales-price')
-            if sales_price_span:
-                strong_element = sales_price_span.find('strong')
-                if strong_element:
-                    price_text = strong_element.get_text(strip=True)
-                    price = price_text.split(',')[0].replace(
-                        '.', '').strip() if ',' in price_text else price_text
+            span_price = price_div.find('span', class_='main-information-2nej4b')
+            if span_price:
+                price_text = span_price.get_text(strip=True)  # "1.029 ,-"
+                # Extract only the numeric part before the ,-
+                price_match = re.search(r'[\d.]+', price_text)
+                if price_match:
+                    # Keep as string "1.029"
+                    price = price_match.group(0)
+
+                    # Keep as integer 1029, remove dot:
+                    price = price.replace('.', '')
 
         # Get second chance price based on the text search
         second_chance_price = None
-        second_chance_div = soup.find(
-            'a', string=lambda text: text and "Affordable Second Chance" in text)
+        second_chance_div = soup.find('a', string=lambda text: text and "Affordable Second Chance" in text)
         if second_chance_div:
-            second_chance_price_tag = second_chance_div.find_next('strong')
+            # Look for the next span that contains the price
+            second_chance_price_tag = second_chance_div.find_next('span', class_='main-information-2nej4b')
             if second_chance_price_tag:
-                second_chance_price_text = second_chance_price_tag.get_text(
-                    strip=True)
-                # Use regex to extract numbers from the price string
-                price_match = re.search(
-                    r'(\d[\d,.]*)', second_chance_price_text)
+                second_chance_price_text = second_chance_price_tag.get_text(strip=True)  # e.g. "940 ,-"
+                # Extract numeric part
+                price_match = re.search(r'[\d.]+', second_chance_price_text)
                 if price_match:
-                    # Clean up price (remove any commas and extract the numeric value)
-                    second_chance_price = price_match.group(
-                        1).replace(',', '').replace('.', '')
+                    # Normalize: remove dots so "1.029" → "1029"
+                    second_chance_price = price_match.group(0).replace('.', '')
 
         # Store extracted data until here
         product_info = {
@@ -134,31 +137,38 @@ for index, link in enumerate(all_links, start=1):
             "Score": score
         }
 
-        # Find the div with class 'js-specifications-content'
-        specifications_div = soup.find(
-            'div', class_='js-specifications-content')
+        # Find the section with class 'product-specifications'
+        section = soup.find('section', id='product-specifications')
 
-        if specifications_div:
-            # Extract all dl elements inside the div
-            dl_elements = specifications_div.find_all('dl')
+        if section:
+            # Now find the main div inside that section
+            specifications_div = section.find('div', class_='css-19mtnxi')
+            
+            if specifications_div:
+                # Each block has an <h3> (category) + <table>
+                sections = specifications_div.find_all('div', class_='css-1u8qly9', recursive=False)
 
-            # Loop through all dl elements and extract data
-            for dl in dl_elements:
-                name = dl.get('data-property-name')
-                value = dl.get('data-property-value')
+                for sec in sections:
+                    # Find all rows in this section's table
+                    rows = sec.find_all('tr')
+                    for row in rows:
+                        cols = row.find_all('td')
+                        # If row has more then 2 column e.g. 1-An optional icon or button (sometimes <button> or <svg>). 2-The attribute name. 3-The attribute value.
+                        if len(cols) >= 3:
+                            # cols[1] is the second column, which contains the name of the attribute. strip=True extracts the text without extra spaces or line breaks.
+                            name = cols[1].get_text(strip=True)
+                            # Check if the 3rd column has an svg with aria-label
+                            svg = cols[2].find('svg', attrs={'aria-label': True})
+                            if svg:
+                                # If svg get the aria-label as value
+                                value = svg['aria-label']  # "Yes" or "No"
+                            else:
+                                # else get the text
+                                value = cols[2].get_text(strip=True)
 
-                # Check for empty string or "1" in value and handle exceptions
-                if value == "" or value == "1":
-                    # Check if there is a title element under the current dl
-                    title_element = dl.find('title')
-                    if title_element:
-                        value = title_element.get_text(strip=True)
-                    else:
-                        value = value  # Keep original if no title element is found
-
-                # Only append the data if both name and value exist
-                if name and value:
-                    product_info[name] = value
+                            # Store in product_info
+                            if name and value:
+                                product_info[name] = value
 
         # Add product data to list
         products_data.append(product_info)
