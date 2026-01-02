@@ -141,34 +141,39 @@ for index, link in enumerate(all_links, start=1):
         section = soup.find('section', id='product-specifications')
 
         if section:
-            # Now find the main div inside that section
-            specifications_div = section.find('div', class_='css-19mtnxi')
-            
-            if specifications_div:
-                # Each block has an <h3> (category) + <table>
-                sections = specifications_div.find_all('div', class_='css-1u8qly9', recursive=False)
+            # Find ALL tables inside the section
+            tables = section.find_all('table')
 
-                for sec in sections:
-                    # Find all rows in this section's table
-                    rows = sec.find_all('tr')
-                    for row in rows:
-                        cols = row.find_all('td')
-                        # If row has more then 2 column e.g. 1-An optional icon or button (sometimes <button> or <svg>). 2-The attribute name. 3-The attribute value.
-                        if len(cols) >= 3:
-                            # cols[1] is the second column, which contains the name of the attribute. strip=True extracts the text without extra spaces or line breaks.
-                            name = cols[1].get_text(strip=True)
-                            # Check if the 3rd column has an svg with aria-label
-                            svg = cols[2].find('svg', attrs={'aria-label': True})
-                            if svg:
-                                # If svg get the aria-label as value
-                                value = svg['aria-label']  # "Yes" or "No"
-                            else:
-                                # else get the text
-                                value = cols[2].get_text(strip=True)
+            # Loop through each specifications table
+            for table in tables:
+                rows = table.find_all('tr')
 
-                            # Store in product_info
-                            if name and value:
-                                product_info[name] = value
+                for row in rows:
+                    # Name is always inside <th scope="row">
+                    name_cell = row.find('th', scope='row')
+                    # The specification value is inside a <td>
+                    # with class "css-7wsoqo" (value column)
+                    value_cell = row.find('td', class_='css-7wsoqo')
+
+                    # If either the name or the value is missing,
+                    # skip this row to avoid errors
+                    if not name_cell or not value_cell:
+                        continue
+
+                    # Extract and clean the text of the specification name
+                    # strip=True removes extra spaces and line breaks
+                    name = name_cell.get_text(strip=True)
+
+                    # Handle SVG Yes / No
+                    svg = value_cell.find('svg', attrs={'aria-label': True})
+                    if svg:
+                        value = svg['aria-label']
+                    else:
+                        value = value_cell.get_text(strip=True)
+
+                    # Only store the data if both name and value are valid
+                    if name and value:
+                        product_info[name] = value
 
         # Add product data to list
         products_data.append(product_info)
